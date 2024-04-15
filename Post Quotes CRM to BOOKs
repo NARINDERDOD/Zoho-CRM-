@@ -1,0 +1,87 @@
+quotesDetails = zoho.crm.getRecordById("Quotes",potIdStr.toLong());
+Product_Details = quotesDetails.get("Product_Details");
+info quotesDetails;
+product = Product_Details.getJSON("product");
+pro_name = product.getJSON("name");
+Contact_Name = quotesDetails.get("Contact_Name");
+customer_name = Contact_Name.getJSON("name");
+unitprice = Product_Details.getJSON("unit_price");
+quantity = Product_Details.getJSON("quantity");
+net_total = Product_Details.getJSON("net_total");
+Valid_Till = quotesDetails.getJSON("Valid_Till");
+customer_email_list = List();
+
+
+// get customer from zoho books
+response_c = invokeurl
+[
+	url :"https://www.zohoapis.in/books/v3/contacts?organization_id=60026385384"
+	type :GET
+	connection:"conn_books"
+];
+contact_response = response_c.get("contacts").toJSONList();
+//info contact_response ;
+customer_name_list = List();
+for each  con in contact_response
+{
+	customer_name_list.add(con.get("first_name") + " " + con.get("last_name"));
+	customer_name_list.add(con.get("contact_id"));
+	//customer_email_list.add(con.get("contact_id"));
+}
+//info customer_name_list  ;
+if(customer_name_list.contains(customer_name))
+{
+	get_customer_id = customer_name_list.indexOf(customer_name);
+	cus_id = customer_name_list.get(get_customer_id + 1);
+}
+else
+{
+	info " customer not exist in books";
+}
+//info contact_response ;
+//get item from zoho books
+response = invokeurl
+[
+	url :"https://www.zohoapis.in/books/v3/items/?organization_id=60026385384"
+	type :GET
+	connection:"conn_books"
+];
+//info response;
+item_response = response.get("items").toJSONList();
+itemname_list = List();
+for each  workshop in item_response
+{
+	itemname_list.add(workshop.get("item_name"));
+	itemname_list.add(workshop.get("item_id"));
+}
+//info itemname_list;
+if(itemname_list.contains(pro_name))
+{
+	get_item_id = itemname_list.indexOf(pro_name);
+	item_id = itemname_list.get(get_item_id + 1);
+}
+else
+{
+	info " noo";
+}
+currentDate = today;
+info Valid_Till;
+apiResponse = Map();
+// Set values for other fields
+apiResponse.put("date",currentDate);
+apiResponse.put("customer_id",cus_id);
+apiResponse.put("expiry_date",Valid_Till);
+apiResponse.put("rate",unitprice);
+apiResponse.put("quantity",quantity);
+// Create line_items array and add items
+lineItems = List();
+lineItem = Map();
+lineItem.put("item_id",item_id);
+lineItem.put("quantity",quantity);
+lineItem.put("rate",unitprice);
+lineItem.put("name",pro_name);
+lineItem.put("item_total",net_total);
+lineItems.add(lineItem);
+apiResponse.put("line_items",lineItems);
+response = zoho.books.createRecord("estimates","60026385384",apiResponse,"conn_books");
+return response;
