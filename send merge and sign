@@ -1,0 +1,77 @@
+void automation.send_mail_merge(int id)
+{
+project_data = zoho.crm.getRecordById("CustomModule5",id);
+info project_data;
+brand = project_data.get("field32");
+documentid = "";
+if(brand.equals("BULTHAUP"))
+{
+	info "brand = " + brand;
+	documentid = "mimvzec3e299398314802922c133967d8e5ba";
+}
+else if(brand.equals("BOFFI"))
+{
+	info "brand = " + brand;
+	documentid = "mimvz5a0e456283df4025999515bd29f639de";
+}
+else if(brand.equals("Arclinea"))
+{
+	info "brand = " + brand;
+	documentid = "mimvzd34931ab1db44d5b81bfad8dfcf9000b";
+}
+contact_id = project_data.get("field52").get("id");
+contact_data = zoho.crm.getRecordById("Contacts",contact_id);
+info contact_data;
+Email = contact_data.get("Email");
+info Email;
+params = Map();
+signerList = List();
+signerObj1 = Map();
+signerObj1.put("recipient_1",Email);
+signerObj1.put("action_type","sign");
+//in_person_sign
+signerList.add(signerObj1);
+params.put("record_id",id);
+params.put("service_name","zohosign");
+params.put("filename","Project Sign");
+params.put("signer_data",signerList);
+params.put("sign_in_order","false");
+//optional
+params.put("message","Please find the document to be signed here");
+//optional
+params.put("reminder_period","15");
+//optional
+params.put("set_expire","30");
+//optional
+info params;
+url = "https://www.zohoapis.com/writer/api/v1/documents/" + documentid + "/merge/sign";
+documentObj = invokeurl
+[
+	url :url
+	type :POST
+	parameters:params
+	connection:"writer_oauth_connection"
+];
+info documentObj;
+// Get the first record's zoho_record_id
+if(documentObj.containsKey("records") && documentObj.get("records").size() > 0)
+{
+	firstRecord = documentObj.get("records").get(0);
+	sign_request_id = firstRecord.get("sign_request_id");
+	info "sign_request_id: " + sign_request_id;
+	// Assuming 'documentObj' contains the JSON response
+	downloadLink = documentObj.getJSON("records").get(0).getJSON("download_link");
+	info downloadLink;
+	merge_report_url = documentObj.getJSON("merge_report_url");
+	updatMAp = Map();
+	updatMAp.put("Sign_Request_Id",sign_request_id);
+	updatMAp.put("Status_Url",merge_report_url);
+	updatMAp.put("DownloadUrl",downloadLink);
+	updateRecord = zoho.crm.updateRecord("CustomModule5",id,updatMAp);
+	info updateRecord;
+}
+else
+{
+	info "No records found in the response.";
+}
+}
